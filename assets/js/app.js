@@ -10,7 +10,7 @@
     }
     const generateCoinsHTML = coinsHTML => {
         return coinsHTML.map(coin => {
-            const {id, symbol, name} = coin
+            const { id, symbol, name } = coin
             return `
             <div class="card m-2" style="width: 18rem;">
                  <div class="card-body">
@@ -22,12 +22,25 @@
                         </div>
                     </div>
                     <p class="card-text">${symbol}</p>
-                    <button class="btn btn-primary" data-coin-id="${id}">More Info</button>
+                    <button 
+                        class="btn btn-primary" 
+                        data-coin-id="${id}"
+                        data-bs-toggle="collapse" 
+                        data-bs-target="#collapse${id}" 
+                        aria-expanded="false" 
+                        aria-controls="collapse${id}"
+                        >More Info
+                    </button>
+                    <div class="collapse collapse-horizontal" id="collapse${id}">
+                        <div class="card card-body" style="width: 300px;">
+                            <p>Loading...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
             `
         }).join('')
-        
+
     }
 
     const renderCoinsHTML = coinsHTML => document.getElementById('coins').innerHTML = coinsHTML;
@@ -41,26 +54,38 @@
 
     const generateCoinCollapse = coin => {
         return `
-        <img src="${coin.image.small}" alt="${coin.name}">
-        <p>Current Price (EUR): ${coin.market_data.current_price.eur}</p>
-        <p>Current Price (USD): ${coin.market_data.current_price.usd}</p>
-        <p>Current Price (ILS): ${coin.market_data.current_price.ils}</p>
-        `
+                            <div class="card card-body" style="width: 300px;">
+                                <img class="collapseImg" src="${coin.image.thumb}" alt="${coin.name}">
+                                <br>
+                                <p>Current Price (EUR): ${coin.market_data.current_price.eur} €</p>
+                                <p>Current Price (USD): ${coin.market_data.current_price.usd} $</p>
+                                <p>Current Price (ILS): ₪ ${coin.market_data.current_price.ils}</p>
+                            </div>
+                 `
     }
 
-    const renderCoinCollapse = coinHTML => document.getElementById('coins').innerHTML = coinHTML;
-    
+    const renderCoinCollapse = (coinHTML, coinId) => {
+        console.log("Rendering collapse for:", coinId);
+        const collapseElement = document.getElementById(coinId);
+        if (!collapseElement) {
+            console.warn(`Element with id ${coinId} not found in the DOM`)
+            return
+        }
+        collapseElement.innerHTML = coinHTML
+    }
+
     const moreInfo = async coinID => {
         try {
             const coinApi = `https://api.coingecko.com/api/v3/coins/${coinID}`
-            const coinData = await collectCoinData(coinApi)    
+            const coinData = await collectCoinData(coinApi)
             const coinCollapse = generateCoinCollapse(coinData)
-            renderCoinCollapse(coinCollapse)
+            const coinId = `collapse${coinData.id}`
+            renderCoinCollapse(coinCollapse, coinId)
         } catch (error) {
             console.warn(error)
             document.getElementById('main').innerHTML = `<p>Error loading data</p>`;
         }
-        
+
     }
 
     const addToMoreInfoEventListeners = () => {

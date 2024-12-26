@@ -52,16 +52,19 @@ h1 {
 
 .m-2 {
     border: 2px solid black;
-
 }
 
 .card-body {
     border: 2px solid yellow;
-    
 }
 
 .newDisplay {
     display: flex;
     justify-content: space-between;
     
+}
+
+.collapseImg {
+    height: 20px;
+    width: 20px;
 }
