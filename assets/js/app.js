@@ -2,6 +2,107 @@
 
 (() => {
 
+    const selectedCoins = new Map();
+
+    const setupToggleSwitches = () => {
+        document.querySelectorAll('.form-check-input').forEach(toggle => {
+            toggle.addEventListener('change', handleCoinToggle);
+        });
+    }
+
+    function handleCoinToggle(event) {
+        const toggle = event.target;
+        const coinId = toggle.dataset.coinId;
+        const coinSymbol = toggle.dataset.coinSymbol;
+        const coinName = toggle.dataset.coinName;
+
+        if (toggle.checked) {
+            
+            if (selectedCoins.size >=5) {
+                toggle.checked = false;
+                showMaxCoinModal(coinId, coinSymbol, coinName, toggle)
+                return;
+            }
+            selectedCoins.set(coinId, {
+                symbol: coinSymbol,
+                name: coinName
+            });
+        } else {
+            selectedCoins.delete(coinId);
+        }
+        console.log('selected coins:', Array.from(selectedCoins.entries()));
+    }
+
+    const showMaxCoinModal = (newCoinId, newCoinSymbol, newCoinName, newToggle) => {
+        if (!document.getElementById('maxCoinsModal')) {
+            const modalHTML = `
+                <div class="modal fade" id="maxCoinsModal" tabindex="-1" aria-labelledby="maxCoinsModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="maxCoinsModalLabel">Maximum Coins Selected</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>You can only select up to 5 coins. Please deselect a coin to add a new one.</p>
+                                <div id="selectedCoinsList">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML)
+        }
+
+        
+        const newModalHTML = generateNewModalHTML(newCoinId, newToggle.id)
+        renderNewModalHTML(newModalHTML);
+        const modal = new bootstrap.Modal(document.getElementById('maxCoinsModal'));
+        modal.show()
+
+    }
+    
+    const generateNewModalHTML = (newCoinId, newToggleId) => {
+        const newModal = Array.from(selectedCoins.entries())
+        .map(([id, coin]) => `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span>${coin.name} (${coin.symbol.toUpperCase()})</span>
+                <button 
+                    class="btn btn-danger btn-sm" 
+                    onclick="replaceSelectedCoin('${id}', '${newCoinId}', '${newToggleId}')">
+                    Replace
+                </button>
+            </div>
+            `
+        ).join('')
+        return newModal;
+    }
+
+    const renderNewModalHTML= newModalHTML => document.getElementById('selectedCoinsList').innerHTML = newModalHTML;
+
+    window.replaceSelectedCoin = function(oldCoinId, newCoinId, newToggleId) {
+      selectedCoins.delete(oldCoinId);
+
+      const oldToggle = document.querySelector(`[data-coin-id="${oldCoinId}"]`);
+      if (oldToggle) oldToggle.checked = false;
+
+      const newToggle = document.getElementById(newToggleId);
+      if (newToggle) {
+        newToggle.checked = true;
+        selectedCoins.set(newCoinId, {
+            symbol: newToggle.dataset.coinSymbol,
+            name: newToggle.dataset.coinName
+        });
+      }
+
+      const modal = bootstrap.Modal.getInstance(document.getElementById('maxCoinsModal'))
+      modal.hide();
+    }
+
     const collectCoinData = async coinApi => {
         const response = await fetch(coinApi)
         if (!response.ok) throw new Error(`Failed to receive data from server`)
@@ -98,8 +199,13 @@
                     <div class="newDisplay">
                         <h5 class="card-title">${name}</h5>
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault${id}">
-                            <label class="form-check-label" for="flexSwitchCheckDefault${id}"></label>
+                            <input 
+                                class="form-check-input" 
+                                type="checkbox" 
+                                id="toggle${id}"
+                                data-coin-id="${id}"
+                                data-coin-symbol="${symbol}"
+                                data-coin-name="${name}">
                         </div>
                     </div>
                     <p class="card-text">${symbol}</p>
@@ -141,6 +247,7 @@
             const coinsHTML = generateCoinsHTML(coinsData)
             renderCoinsHTML(coinsHTML)
             addToMoreInfoEventListeners();
+            setupToggleSwitches();
         } catch (error) {
             console.warn(error)
             document.getElementById('main').innerHTML = `<p>Error loading data</p>`;
