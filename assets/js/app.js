@@ -197,7 +197,7 @@
             <div class="card m-2" style="width: 18rem;">
                  <div class="card-body">
                     <div class="newDisplay">
-                        <h5 class="card-title">${name}</h5>
+                        <h5 class="card-title">${symbol.toUpperCase()}</h5>
                         <div class="form-check form-switch">
                             <input 
                                 class="form-check-input" 
@@ -208,7 +208,7 @@
                                 data-coin-name="${name}">
                         </div>
                     </div>
-                    <p class="card-text">${symbol}</p>
+                    <p class="card-text">${name}</p>
                     <button 
                         class="btn btn-primary" 
                         data-coin-id="${id}"
@@ -241,13 +241,58 @@
         })
     }
 
+    const saveMainPageToCache = data => {
+        try {
+            const cache = {
+                data,
+                timestamp: Date.now()
+            }
+            localStorage.setItem('load', JSON.stringify(cache))
+        } catch (error) {
+            console.warn('Error Saving initial load to catch', error)
+        }
+    }
+
+    const onLoadCacheIsValid = timestamp => {
+        const now = Date.now();
+        const numOfSeconds = 1000*8
+        return (now - timestamp) < numOfSeconds;
+    }
+
+    const loadMainPageFromCache = () => {
+        const cache = localStorage.getItem('load');
+        if (!cache) return null
+
+        const {data, timestamp} = JSON.parse(cache);
+        if (onLoadCacheIsValid(timestamp)) {
+            return data
+        } else {
+            return null
+        }
+        
+    }
+
     async function runProgram(url) {
         try {
-            const coinsData = await collectData(url)
-            const coinsHTML = generateCoinsHTML(coinsData)
-            renderCoinsHTML(coinsHTML)
-            addToMoreInfoEventListeners();
-            setupToggleSwitches();
+            const cache = loadMainPageFromCache()
+            if (cache) {
+                const coinsData = cache; 
+                const coinsHTML = generateCoinsHTML(coinsData)
+                renderCoinsHTML(coinsHTML)
+                addToMoreInfoEventListeners();
+                setupToggleSwitches();
+                
+            } else {
+                const coinsData = await collectData(url)
+                saveMainPageToCache(coinsData)
+                const coinsHTML = generateCoinsHTML(coinsData)
+                renderCoinsHTML(coinsHTML)
+                addToMoreInfoEventListeners();
+                setupToggleSwitches();
+            }
+
+            
+            
         } catch (error) {
             console.warn(error)
             document.getElementById('main').innerHTML = `<p>Error loading data</p>`;
