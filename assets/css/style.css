@@ -69,10 +69,6 @@ h1 {
     width: 20px;
 }
 
-#aboutMe #reports {
-    display: none;
-}
-
 .loading {
     text-align: center;
     padding: 20px;
@@ -100,4 +96,23 @@ h1 {
     border: 1px solid #ffcdd2;
     border-radius: 4px;
     color: red;
+}
+
+.about-container {
+    margin: 10px;
+}
+
+.about-container ::first-letter {
+    font-size: larger;
+}
+
+.about-container img {
+    height: 200px;
+}
+
+.header-photo {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 10px;
 }
