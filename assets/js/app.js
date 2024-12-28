@@ -2,6 +2,21 @@
 
 (() => {
 
+    const API_CONFIG = {
+        COIN_LIST: 'https://api.coingecko.com/api/v3/coins/list',
+        COIN_DETAILS: 'https://api.coingecko.com/api/v3/coins/',
+        MULTI_PRICE: 'https://min-api.cryptocompare.com/data/pricemulti'
+    };
+
+    const MESSAGES = {
+        LOADING: 'Loading Data.',
+        ERROR: {
+            FETCH: 'Error loading data. Please try again.',
+            SERVER: 'Server error occurred.',
+            NETWORK: 'Network connection error.'
+        }
+    };
+
     const apiTracker = {
         requestCount: 0,
         roundNumber: 0,
@@ -110,11 +125,29 @@
         modal.hide();
     }
 
-    const collectCoinData = async coinApi => {
-        const response = await fetch(coinApi)
-        if (!response.ok) throw new Error(`Failed to receive data from server`)
-        const coin = await response.json()
-        return coin;
+    const collectCoinData = async coinId => {
+        try {
+            const collapseId = `collapse${coinId}`;
+            document.getElementById(collapseId).innerHTML = `
+                <div class="card card-body" style="width: 300px;">
+                    <div class="loading">${MESSAGES.LOADING}</div>
+                </div>
+            `;
+            const coinApi = `https://api.coingecko.com/api/v3/coins/${coinId}`;
+            const response = await fetch(coinApi)
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const coin = await response.json()
+            displayMoreInfo(coin, coinId);
+            return coin;
+        } catch (error) {
+            console.error('Error fetching coin data:', error);
+            document.getElementById(collapseId).innerHTML = `
+                <div class="card card-body" style="width: 300px;">
+                    <div class="error">${MESSAGES.ERROR.FETCH}</div>
+                </div>
+            `;
+            return null;
+        } 
     }
 
     const generateCoinCollapse = coin => {
@@ -178,7 +211,7 @@
     const calculateWaitTime = () => {
         const now = Date.now();
 
-        if (apiTracker.roundNumber >=2) {
+        if (apiTracker.roundNumber >= 2) {
             const timeSinceLastRound = now - apiTracker.lastRoundTime;
             const minute = 60000
             if (timeSinceLastRound < minute) {
@@ -212,7 +245,7 @@
     const moreInfo = async coinId => {
         try {
             const cachedData = getSingleCoinCachedData(coinId);
-            if (cachedData) {   
+            if (cachedData) {
                 displayMoreInfo(cachedData, coinId)
             } else {
                 const waitTime = calculateWaitTime();
@@ -225,32 +258,46 @@
                     apiTracker.lastRoundTime = Date.now()
                 }
 
-                const coinApi = `https://api.coingecko.com/api/v3/coins/${coinId}`
-                const coinData = await collectCoinData(coinApi)
-                displayMoreInfo(coinData, coinId)
-                saveSingleCoinToCache(coinId, coinData)
+                const coinData = await collectCoinData(coinId)
+                if (coinData) saveSingleCoinToCache(coinId, coinData)
+                
             }
         } catch (error) {
             console.warn(error)
             const coinIdCollapse = `collapse${coinId}`;
             document.getElementById(coinIdCollapse).innerHTML = `
             <div class="card card-body" style="width: 300px;">
-                <p>Error loading data. please try again.</p>
+                <p>${MESSAGES.ERROR.FETCH}</p>
             </div>
             `
         }
     }
 
     const collectData = async url => {
-        const response = await fetch(url)
-        if (!response.ok) throw new Error(`Failed to receive data from server`)
-        const coins = await response.json()
-        return coins.slice(0, 100)
+        try {
+            document.getElementById('coins').innerHTML = `<div class="loading">${MESSAGES.LOADING}</div>`;
+            const response = await fetch(url)
+            if (!response.ok) console.error(`HTTP error! status: ${response.status}`);
+            const coins = await response.json()
+            const limitCoins = coins.slice(0, 100);
+            return limitCoins;
+        } catch (error) {
+            if (error.name === 'typeError') {
+                console.error('Network error:', error);
+                document.getElementById('coins').innerHTML = '<div class="error">Unable to connect to Server. Please check your internet connection.</div>'
+            } else {
+                console.error('Error fetching coins:', error);
+                document.getElementById('coins').innerHTML = '<div class="error">Failed to load coins. Please try again later.</div>';
+            }
+            return []
+        }
     }
+
+    
     const generateCoinsHTML = coinsHTML => {
-        return coinsHTML.map(coin => {
-            const { id, symbol, name } = coin
-            return `
+    return coinsHTML.map(coin => {
+        const { id, symbol, name } = coin
+        return `
             <div class="card m-2" style="width: 18rem;">
                  <div class="card-body">
                     <div class="newDisplay">
@@ -277,90 +324,90 @@
                     </button>
                     <div class="collapse collapse-horizontal" id="collapse${id}">
                         <div class="card card-body" style="width: 300px;">
-                            <p>Loading...</p>
+                            <p class="loading">${MESSAGES.LOADING}</p>
                         </div>
                     </div>
                 </div>
             </div>
             `
-        }).join('')
+    }).join('')
 
-    }
+}
 
-    const renderCoinsHTML = coinsHTML => document.getElementById('coins').innerHTML = coinsHTML;
+const renderCoinsHTML = coinsHTML => document.getElementById('coins').innerHTML = coinsHTML;
 
-    const addToMoreInfoEventListeners = () => {
-        document.querySelectorAll('.btn-primary').forEach(button => {
-            button.addEventListener('click', function () {
-                const coinId = this.getAttribute('data-coin-id')
-                moreInfo(coinId)
-            })
+const addToMoreInfoEventListeners = () => {
+    document.querySelectorAll('.btn-primary').forEach(button => {
+        button.addEventListener('click', function () {
+            const coinId = this.getAttribute('data-coin-id')
+            moreInfo(coinId)
         })
-    }
+    })
+}
 
-    const saveMainPageToCache = data => {
-        try {
-            const cache = {
-                data,
-                timestamp: Date.now()
-            }
-            localStorage.setItem('load', JSON.stringify(cache))
-        } catch (error) {
-            console.warn('Error Saving initial load to catch', error)
+const saveMainPageToCache = data => {
+    try {
+        const cache = {
+            data,
+            timestamp: Date.now()
         }
+        localStorage.setItem('load', JSON.stringify(cache))
+    } catch (error) {
+        console.warn('Error Saving initial load to catch', error)
     }
+}
 
-    const onLoadCacheIsValid = timestamp => {
-        const now = Date.now();
-        const numOfSeconds = 1000 * 8
-        return (now - timestamp) < numOfSeconds;
-    }
+const onLoadCacheIsValid = timestamp => {
+    const now = Date.now();
+    const numOfSeconds = 1000 * 8
+    return (now - timestamp) < numOfSeconds;
+}
 
-    const loadMainPageFromCache = () => {
-        try {
-            const cache = localStorage.getItem('load');
-            if (!cache) return null
+const loadMainPageFromCache = () => {
+    try {
+        const cache = localStorage.getItem('load');
+        if (!cache) return null
 
-            const { data, timestamp } = JSON.parse(cache);
-            if (onLoadCacheIsValid(timestamp)) {
-                return data
-            } else {
-                return null
-            }
-        } catch (error) {
-            console.warn('Error reading from cache:', error);
-            return null;
+        const { data, timestamp } = JSON.parse(cache);
+        if (onLoadCacheIsValid(timestamp)) {
+            return data
+        } else {
+            return null
         }
-
-
+    } catch (error) {
+        console.warn('Error reading from cache:', error);
+        return null;
     }
 
-    const displayCoins = coinsData => {
-        const coinsHTML = generateCoinsHTML(coinsData)
-        renderCoinsHTML(coinsHTML)
-        addToMoreInfoEventListeners();
-        setupToggleSwitches();
 
-    }
+}
 
-    async function runProgram(url) {
-        try {
-            const cache = loadMainPageFromCache()
-            if (cache) {
-                displayCoins(cache)
-            } else {
-                const coinsData = await collectData(url)
-                apiTracker.requestCount = 1;
-                apiTracker.lastRequestTime = Date.now();
-                saveMainPageToCache(coinsData)
-                displayCoins(coinsData)
-            }
-        } catch (error) {
-            console.warn(error)
-            document.getElementById('main').innerHTML = `<p>Error loading data</p>`;
+const displayCoins = coinsData => {
+    const coinsHTML = generateCoinsHTML(coinsData)
+    renderCoinsHTML(coinsHTML)
+    addToMoreInfoEventListeners();
+    setupToggleSwitches();
+
+}
+
+async function runProgram(url) {
+    try {
+        const cache = loadMainPageFromCache()
+        if (cache) {
+            displayCoins(cache)
+        } else {
+            const coinsData = await collectData(url)
+            apiTracker.requestCount = 1;
+            apiTracker.lastRequestTime = Date.now();
+            saveMainPageToCache(coinsData)
+            displayCoins(coinsData)
         }
+    } catch (error) {
+        console.warn(error)
+        document.getElementById('main').innerHTML = `<p>${MESSAGES.ERROR.FETCH}</p>`;
     }
+}
 
-    runProgram(`https://api.coingecko.com/api/v3/coins/list`)
+runProgram(`https://api.coingecko.com/api/v3/coins/list`)
 
-})()
+}) ()
