@@ -2,6 +2,13 @@
 
 (() => {
 
+    const apiTracker = {
+        requestCount: 0,
+        roundNumber: 0,
+        lastRequestTime: 0,
+        lastRoundTime: 0
+    }
+
     const selectedCoins = new Map();
 
     const setupToggleSwitches = () => {
@@ -17,8 +24,8 @@
         const coinName = toggle.dataset.coinName;
 
         if (toggle.checked) {
-            
-            if (selectedCoins.size >=5) {
+
+            if (selectedCoins.size >= 5) {
                 toggle.checked = false;
                 showMaxCoinModal(coinId, coinSymbol, coinName, toggle)
                 return;
@@ -58,17 +65,17 @@
             document.body.insertAdjacentHTML('beforeend', modalHTML)
         }
 
-        
+
         const newModalHTML = generateNewModalHTML(newCoinId, newToggle.id)
         renderNewModalHTML(newModalHTML);
         const modal = new bootstrap.Modal(document.getElementById('maxCoinsModal'));
         modal.show()
 
     }
-    
+
     const generateNewModalHTML = (newCoinId, newToggleId) => {
         const newModal = Array.from(selectedCoins.entries())
-        .map(([id, coin]) => `
+            .map(([id, coin]) => `
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <span>${coin.name} (${coin.symbol.toUpperCase()})</span>
                 <button 
@@ -78,29 +85,29 @@
                 </button>
             </div>
             `
-        ).join('')
+            ).join('')
         return newModal;
     }
 
-    const renderNewModalHTML= newModalHTML => document.getElementById('selectedCoinsList').innerHTML = newModalHTML;
+    const renderNewModalHTML = newModalHTML => document.getElementById('selectedCoinsList').innerHTML = newModalHTML;
 
-    window.replaceSelectedCoin = function(oldCoinId, newCoinId, newToggleId) {
-      selectedCoins.delete(oldCoinId);
+    window.replaceSelectedCoin = function (oldCoinId, newCoinId, newToggleId) {
+        selectedCoins.delete(oldCoinId);
 
-      const oldToggle = document.querySelector(`[data-coin-id="${oldCoinId}"]`);
-      if (oldToggle) oldToggle.checked = false;
+        const oldToggle = document.querySelector(`[data-coin-id="${oldCoinId}"]`);
+        if (oldToggle) oldToggle.checked = false;
 
-      const newToggle = document.getElementById(newToggleId);
-      if (newToggle) {
-        newToggle.checked = true;
-        selectedCoins.set(newCoinId, {
-            symbol: newToggle.dataset.coinSymbol,
-            name: newToggle.dataset.coinName
-        });
-      }
+        const newToggle = document.getElementById(newToggleId);
+        if (newToggle) {
+            newToggle.checked = true;
+            selectedCoins.set(newCoinId, {
+                symbol: newToggle.dataset.coinSymbol,
+                name: newToggle.dataset.coinName
+            });
+        }
 
-      const modal = bootstrap.Modal.getInstance(document.getElementById('maxCoinsModal'))
-      modal.hide();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('maxCoinsModal'))
+        modal.hide();
     }
 
     const collectCoinData = async coinApi => {
@@ -124,20 +131,20 @@
 
     const renderCoinCollapse = (coinHTML, coinId) => document.getElementById(coinId).innerHTML = coinHTML
 
-    const isCacheValid = timestamp => {
+    const isSingleCoinCacheValid = timestamp => {
         const now = Date.now();
-        const twoMinutes = 1000*60*2;
+        const twoMinutes = 1000 * 60 * 2;
         return (now - timestamp) < twoMinutes
     }
 
-    const getCachedData = coinId => {
+    const getSingleCoinCachedData = coinId => {
         try {
             const cached = localStorage.getItem(`crypto${coinId}`)
             if (!cached) return null
 
-            const {data, timestamp} = JSON.parse(cached);
+            const { data, timestamp } = JSON.parse(cached);
 
-            if (!isCacheValid(timestamp)) {
+            if (!isSingleCoinCacheValid(timestamp)) {
                 localStorage.removeItem(`crypto${coinId}`)
                 return null
             }
@@ -150,37 +157,87 @@
         }
     }
 
-    const  saveToCache = (coinId, data) => {
+    const saveSingleCoinToCache = (coinId, data) => {
         try {
             const cacheData = {
                 data,
                 timestamp: Date.now()
             }
-            localStorage.setItem(`crypto${coinId}`, JSON.stringify(cacheData) )
+            localStorage.setItem(`crypto${coinId}`, JSON.stringify(cacheData))
         } catch (error) {
             console.warn('Error Saving to catch', error)
         }
     }
 
+    const displayMoreInfo = (coinData, coinId) => {
+        const coinCollapse = generateCoinCollapse(coinData)
+        const coinIdCollapse = `collapse${coinId}`;
+        renderCoinCollapse(coinCollapse, coinIdCollapse);
+    }
+
+    const calculateWaitTime = () => {
+        const now = Date.now();
+
+        if (apiTracker.roundNumber >=2) {
+            const timeSinceLastRound = now - apiTracker.lastRoundTime;
+            const minute = 60000
+            if (timeSinceLastRound < minute) {
+                return minute - timeSinceLastRound
+            }
+            apiTracker.requestCount = 0;
+            apiTracker.roundNumber = 0;
+            return 0
+        }
+
+        if (apiTracker.requestCount >= 3) {
+            const timeSinceLastRound = now - apiTracker.lastRoundTime;
+            const twentySec = 20000;
+            if (timeSinceLastRound < twentySec) {
+                return twentySec - timeSinceLastRound
+            }
+            apiTracker.requestCount = 0;
+            apiTracker.roundNumber++;
+            apiTracker.lastRequestTime = now;
+            return 0
+        }
+
+        const timeSinceLastRequest = now - apiTracker.lastRequestTime;
+        const threeSec = 3000;
+        if (timeSinceLastRequest < threeSec) {
+            return threeSec - timeSinceLastRequest
+        }
+        return 0;
+    }
+
     const moreInfo = async coinId => {
         try {
-            const cachedData = getCachedData(coinId);
-            if (cachedData) {
-                const coinCollapse = generateCoinCollapse(cachedData);
-                const coinIdCollapse = `collapse${coinId}`;    
-                renderCoinCollapse(coinCollapse, coinIdCollapse);
-                return;
-            }
+            const cachedData = getSingleCoinCachedData(coinId);
+            if (cachedData) {   
+                displayMoreInfo(cachedData, coinId)
+            } else {
+                const waitTime = calculateWaitTime();
+                if (waitTime > 0) {
+                    await new Promise(resolve => setTimeout(resolve, waitTime))
+                }
+                apiTracker.lastRequestTime = Date.now()
+                apiTracker.requestCount++
+                if (apiTracker.requestCount === 3) {
+                    apiTracker.lastRoundTime = Date.now()
+                }
 
-            const coinApi = `https://api.coingecko.com/api/v3/coins/${coinId}`
-            const coinData = await collectCoinData(coinApi)
-            const coinCollapse = generateCoinCollapse(coinData)
-            const coinIdCollapse = `collapse${coinId}`
-            renderCoinCollapse(coinCollapse, coinIdCollapse)
-            saveToCache(coinId, coinData)
+                const coinApi = `https://api.coingecko.com/api/v3/coins/${coinId}`
+                const coinData = await collectCoinData(coinApi)
+                displayMoreInfo(coinData, coinId)
+                saveSingleCoinToCache(coinId, coinData)
+            }
         } catch (error) {
             console.warn(error)
-            document.getElementById('main').innerHTML = `<p>Error loading data</p>`;
+            const coinIdCollapse = `collapse${coinId}`;
+            document.getElementById(coinIdCollapse).innerHTML = `
+            <div class="card card-body" style="width: 300px;">
+                <p>Error loading data. please try again.</p>
+            </div>
+            `
         }
     }
 
@@ -255,44 +312,49 @@
 
     const onLoadCacheIsValid = timestamp => {
         const now = Date.now();
-        const numOfSeconds = 1000*8
+        const numOfSeconds = 1000 * 8
         return (now - timestamp) < numOfSeconds;
     }
 
     const loadMainPageFromCache = () => {
-        const cache = localStorage.getItem('load');
-        if (!cache) return null
+        try {
+            const cache = localStorage.getItem('load');
+            if (!cache) return null
 
-        const {data, timestamp} = JSON.parse(cache);
-        if (onLoadCacheIsValid(timestamp)) {
-            return data
-        } else {
-            return null
+            const { data, timestamp } = JSON.parse(cache);
+            if (onLoadCacheIsValid(timestamp)) {
+                return data
+            } else {
+                return null
+            }
+        } catch (error) {
+            console.warn('Error reading from cache:', error);
+            return null;
         }
-        
+
+
+    }
+
+    const displayCoins = coinsData => {
+        const coinsHTML = generateCoinsHTML(coinsData)
+        renderCoinsHTML(coinsHTML)
+        addToMoreInfoEventListeners();
+        setupToggleSwitches();
+
     }
 
     async function runProgram(url) {
         try {
             const cache = loadMainPageFromCache()
             if (cache) {
-                const coinsData = cache; 
-                const coinsHTML = generateCoinsHTML(coinsData)
-                renderCoinsHTML(coinsHTML)
-                addToMoreInfoEventListeners();
-                setupToggleSwitches();
-                
+                displayCoins(cache)
             } else {
                 const coinsData = await collectData(url)
+                apiTracker.requestCount = 1;
+                apiTracker.lastRequestTime = Date.now();
                 saveMainPageToCache(coinsData)
-                const coinsHTML = generateCoinsHTML(coinsData)
-                renderCoinsHTML(coinsHTML)
-                addToMoreInfoEventListeners();
-                setupToggleSwitches();
+                displayCoins(coinsData)
             }
-
-            
-            
         } catch (error) {
             console.warn(error)
             document.getElementById('main').innerHTML = `<p>Error loading data</p>`;

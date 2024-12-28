@@ -68,3 +68,7 @@ h1 {
     height: 20px;
     width: 20px;
 }
+
+#aboutMe {
+    display: none;
+}
