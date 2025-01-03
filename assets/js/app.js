@@ -140,7 +140,7 @@
 
     const renderSuccessCoinState = (coinId, message) => {
         document.getElementById(`collapse${coinId}`).innerHTML = `
-                <div class="card card-body" style="width: 300px;">
+                <div class="card card-body">
                     <div class="loading">${message}</div>
                 </div>
             `
@@ -148,7 +148,7 @@
 
     const renderErrorCoinState = (coinId, message) => {
         document.getElementById(`collapse${coinId}`).innerHTML = `
-                <div class="card card-body" style="width: 300px;">
+                <div class="card card-body" style="min-width: 300px;">
                     <div>${message}</div>
                 </div>
             `
@@ -175,7 +175,7 @@
 
     const generateCoinCollapse = coin => {
         return `
-                            <div class="card card-body" style="width: 300px;">
+                            <div class="card card-body" style="min-width: 300px;">
                                 <img class="collapseImg" src="${coin.image.thumb}" alt="${coin.name}">
                                 <br>
                                 <p>Current Price (EUR): € ${coin.market_data.current_price.eur.toFixed(5)}</p>
@@ -302,7 +302,7 @@
                         >More Info
                     </button>
                     <div class="collapse collapse-horizontal" id="collapse${id}">
-                        <div class="card card-body" style="width: 300px;">
+                        <div class="card card-body" style="min-width: 300px;">
                             <p class="loading">${MESSAGES.LOADING}</p>
                         </div>
                     </div>
@@ -390,10 +390,10 @@
         mainContent.innerHTML = `
             <div class="about-container">
                 <div class="header-photo">
-                    <h2>About Me</h2>
                     <img src="assets/photos/MyPhoto.jpg" alt="My Photo: Daniel Raz">
                 </div>
                 <div class="personal-info">
+                 <h2>About Me</h2>
                     <p>My name is Daniel Raz. I'm married to Tal, father to Ella and Neri, and in May we are expecting our 3rd baby girl.</p>
                     <p>I am an independent professional with nearly a decade of experience in managing private clinics
                         and teaching in the field of Chinese medicine. 
@@ -405,7 +405,7 @@
                         which drives me to expand my knowledge in development and technology. 
                         I am excited and highly motivated to learn and grow in the tech industry and am prepared to challenge myself.
                     </p>
-                </div>
+                
                 <div class="project-info">
                     <p>This project represents a comprehensive cryptocurrency tracking platform developed using modern web technologies.
                          The application enables users to monitor and analyze various digital currencies in real-time, 
@@ -417,7 +417,7 @@
                         This project embodies the practical application of frontend development skills, 
                         combining technical expertise with user-centered design principles to create a functional and engaging web application.
                     </p>
-                </div>
+                </div></div>
             </div>
         `
     }
