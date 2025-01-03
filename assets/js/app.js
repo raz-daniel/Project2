@@ -161,9 +161,9 @@
             if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
 
             const coin = await response.json()
-            if (coinData && coinData.market_data) {
+            if (coin && coin.market_data) {
                 displayMoreInfo(coin, coinId);
-                saveSingleCoinToCache(coinId, coinData)
+                saveSingleCoinToCache(coinId, coin)
                 return coin;
             }
         } catch (error) {
@@ -422,6 +422,72 @@
         `
     }
 
+    const displayReportsPage = () => {
+        if (selectedCoins.size === 0) {
+            document.getElementById('main').innerHTML = '<div class="alert alert-warning">Please select coins to display in the chart</div>';
+            return;
+        }
+
+        const mainContent = document.getElementById('main');
+        mainContent.innerHTML = '<canvas id="cryptoChart"></canvas>';
+
+        const chartColors = ['#0000FF', '#FF0000', '#808080', '#008000', '#000000'];
+
+        const ctx = document.getElementById('cryptoChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: Array.from(selectedCoins.entries()).map(([id, coin], index) => ({
+                    label: coin.symbol.toUpperCase(),
+                    data: [],
+                    borderColor: chartColors[index],
+                    tension: 0.1
+                }))
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+
+        async function updateChart() {
+            try {
+                const symbols = Array.from(selectedCoins.values()).map(coin => coin.symbol.toUpperCase()).join(',');
+                const response = await fetch(`https://min-api.cryptocompare.com/data/pricemulti?fsyms=${symbols}&tsyms=USD`);
+                const prices = await response.json();
+
+                const timestamp = new Date().toLocaleTimeString();
+                chart.data.labels.push(timestamp);
+
+                Object.entries(prices).forEach((coinData, index) => {
+                    const [symbol, priceData] = coinData;
+                    chart.data.datasets[index].data.push(priceData.USD);
+                });
+
+                if (chart.data.labels.length > 30) {
+                    chart.data.labels.shift();
+                    chart.data.datasets.forEach(dataset => dataset.data.shift());
+                }
+
+                chart.update();
+            } catch (error) {
+                console.error('Error fetching crypto prices:', error);
+            }
+        }
+
+        updateChart();
+        const interval = setInterval(updateChart, 2000);
+
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => clearInterval(interval));
+        });
+    }
+
     const displayNav = () => {
         document.querySelectorAll('.nav-link').forEach(link => {
             link.addEventListener('click', event => {
@@ -447,17 +513,37 @@
         runCoinsOnload(API_CONFIG.COINS_LIST)
         displayNav()
     }
-    
+
     init();
 
-    document.getElementById('searchButton').addEventListener('click', function(event) {
-        event.preventDefault;
-        const searchText = document.getElementById('searchInput').toLowerCase();
-        document.querySelectorAll('#coins .card').forEach(function(card) {
-            const title = card.querySelector('.card-title').textContent.toLowerCase();
-            const isVisible = title.includes(searchText);
-            card.style.display = isVisible ? 'block' : 'none';
+    document.getElementById('searchButton')?.addEventListener('click', function(event) {
+        event.preventDefault();
+        const searchText = document.getElementById('searchInput')?.value.toLowerCase() || '';
+        
+        const cards = document.querySelectorAll('#main .card');
+        
+        cards.forEach(card => {
+            const symbol = card.querySelector('.card-title')?.textContent.toLowerCase() || '';
+            const name = card.querySelector('.card-text')?.textContent.toLowerCase() || '';
+            
+            const isVisible = symbol.includes(searchText) || name.includes(searchText);
+            card.style.display = isVisible ? '' : 'none';
         });
     });
     
+    document.getElementById('searchInput')?.addEventListener('input', function(event) {
+        const searchText = event.target.value.toLowerCase();
+        
+        const cards = document.querySelectorAll('#main .card');
+        
+        cards.forEach(card => {
+            const symbol = card.querySelector('.card-title')?.textContent.toLowerCase() || '';
+            const name = card.querySelector('.card-text')?.textContent.toLowerCase() || '';
+            
+            const isVisible = symbol.includes(searchText) || name.includes(searchText);
+            card.style.display = isVisible ? '' : 'none';
+        });
+    });
+
+
 })()
