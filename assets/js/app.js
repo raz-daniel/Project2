@@ -277,7 +277,7 @@
         return coinsHTML.map(coin => {
             const { id, symbol, name } = coin
             return `
-            <div class="card m-2" style="width: 18rem;">
+            <div class="card">
                  <div class="card-body">
                     <div class="newDisplay">
                         <h5 class="card-title">${symbol.toUpperCase()}</h5>
@@ -516,34 +516,61 @@
 
     init();
 
-    document.getElementById('searchButton')?.addEventListener('click', function(event) {
+    document.getElementById('searchButton')?.addEventListener('click', function (event) {
         event.preventDefault();
         const searchText = document.getElementById('searchInput')?.value.toLowerCase() || '';
-        
+
         const cards = document.querySelectorAll('#main .card');
-        
+
         cards.forEach(card => {
             const symbol = card.querySelector('.card-title')?.textContent.toLowerCase() || '';
             const name = card.querySelector('.card-text')?.textContent.toLowerCase() || '';
-            
-            const isVisible = symbol.includes(searchText) || name.includes(searchText);
-            card.style.display = isVisible ? '' : 'none';
-        });
-    });
-    
-    document.getElementById('searchInput')?.addEventListener('input', function(event) {
-        const searchText = event.target.value.toLowerCase();
-        
-        const cards = document.querySelectorAll('#main .card');
-        
-        cards.forEach(card => {
-            const symbol = card.querySelector('.card-title')?.textContent.toLowerCase() || '';
-            const name = card.querySelector('.card-text')?.textContent.toLowerCase() || '';
-            
+
             const isVisible = symbol.includes(searchText) || name.includes(searchText);
             card.style.display = isVisible ? '' : 'none';
         });
     });
 
+    document.getElementById('searchInput')?.addEventListener('input', function (event) {
+        const searchText = event.target.value.toLowerCase();
+
+        const cards = document.querySelectorAll('#main .card');
+
+        cards.forEach(card => {
+            const symbol = card.querySelector('.card-title')?.textContent.toLowerCase() || '';
+            const name = card.querySelector('.card-text')?.textContent.toLowerCase() || '';
+
+            const isVisible = symbol.includes(searchText) || name.includes(searchText);
+            card.style.display = isVisible ? '' : 'none';
+        });
+    });
+
+    function setActiveNavLink(pageId) {
+        // Remove active class from all nav links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+        });
+
+        // Add active class to the clicked link
+        const activeLink = document.querySelector(`[data-page="${pageId}"]`);
+        if (activeLink) {
+            activeLink.classList.add('active');
+        }
+    }
+
+    // Add this to your existing page loading logic
+    function loadPage(pageId) {
+        setActiveNavLink(pageId);
+        // Your existing page loading code...
+    }
+
+    // Add click event listeners to nav links
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const pageId = link.dataset.page;
+            loadPage(pageId);
+        });
+    });
 
 })()
