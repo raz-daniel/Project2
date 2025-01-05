@@ -371,11 +371,15 @@
 
     async function runCoinsOnload(url) {
         try {
+            console.log('Running coins onload');
             const cache = getCacheOnload()
+            console.log('Cache retrieved:', cache ? 'yes' : 'no');
             if (cache) {
                 displayCoins(cache)
             } else {
+                console.log('Fetching new data');
                 const coinsData = await collectData(url)
+                console.log('Data collected, saving to cache');
                 saveCacheOnload(coinsData)
                 displayCoins(coinsData)
             }
@@ -510,6 +514,7 @@
     }
 
     const init = () => {
+        console.log('Init called')
         runCoinsOnload(API_CONFIG.COINS_LIST)
         displayNav()
     }
