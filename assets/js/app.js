@@ -371,15 +371,11 @@
 
     async function runCoinsOnload(url) {
         try {
-            console.log('Running coins onload');
             const cache = getCacheOnload()
-            console.log('Cache retrieved:', cache ? 'yes' : 'no');
             if (cache) {
                 displayCoins(cache)
             } else {
-                console.log('Fetching new data');
                 const coinsData = await collectData(url)
-                console.log('Data collected, saving to cache');
                 saveCacheOnload(coinsData)
                 displayCoins(coinsData)
             }
@@ -514,7 +510,6 @@
     }
 
     const init = () => {
-        console.log('Init called')
         runCoinsOnload(API_CONFIG.COINS_LIST)
         displayNav()
     }
@@ -551,25 +546,20 @@
     });
 
     function setActiveNavLink(pageId) {
-        // Remove active class from all nav links
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.remove('active');
         });
 
-        // Add active class to the clicked link
         const activeLink = document.querySelector(`[data-page="${pageId}"]`);
         if (activeLink) {
             activeLink.classList.add('active');
         }
     }
 
-    // Add this to your existing page loading logic
     function loadPage(pageId) {
         setActiveNavLink(pageId);
-        // Your existing page loading code...
     }
 
-    // Add click event listeners to nav links
     document.querySelectorAll('.nav-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
